@@ -119,6 +119,51 @@ class OrderServiceTest {
     }
 
     @Test
+    @DisplayName("Should successfully place order when customer is within 2.5 km delivery radius")
+    void testPlaceOrderWithinDeliveryRadius() {
+        RestaurantStatusResponse statusResponse = new RestaurantStatusResponse();
+        statusResponse.setOpen(true);
+        when(restaurantStatusService.getRestaurantStatus()).thenReturn(statusResponse);
+        when(restaurantStatusService.getOrCreateDefaultSettings()).thenReturn(settings);
+        when(foodItemRepository.findById(100L)).thenReturn(Optional.of(biryani));
+
+        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> {
+            Order o = invocation.getArgument(0);
+            o.setId(501L);
+            return o;
+        });
+
+        // Customer coordinate ~0.5 km away from restaurant (12.9716, 77.6412)
+        PlaceOrderRequest request = new PlaceOrderRequest("Nearby Indiranagar, Bengaluru",
+                Collections.singletonList(new CartItemRequest(100L, 1)), 12.9750, 77.6430);
+
+        OrderDto createdOrder = orderService.placeOrder(request, customer);
+
+        assertNotNull(createdOrder);
+        assertTrue(createdOrder.getLocationShared());
+        assertEquals(12.9750, createdOrder.getLatitude());
+        assertEquals(77.6430, createdOrder.getLongitude());
+    }
+
+    @Test
+    @DisplayName("Should reject order when customer location exceeds 2.5 km delivery radius")
+    void testPlaceOrderOutsideDeliveryRadius() {
+        RestaurantStatusResponse statusResponse = new RestaurantStatusResponse();
+        statusResponse.setOpen(true);
+        when(restaurantStatusService.getRestaurantStatus()).thenReturn(statusResponse);
+
+        // Location ~6 km away
+        PlaceOrderRequest request = new PlaceOrderRequest("Far Away Layout, Bengaluru",
+                Collections.singletonList(new CartItemRequest(100L, 1)), 12.9200, 77.6100);
+
+        BadRequestException ex = assertThrows(BadRequestException.class,
+                () -> orderService.placeOrder(request, customer));
+
+        assertTrue(ex.getMessage().contains("Delivery is only available within 2.5 km"));
+        verify(orderRepository, never()).save(any(Order.class));
+    }
+
+    @Test
     @DisplayName("WhatsApp location sharing MUST FAIL when order is still in PENDING status")
     void testLocationShareFailsWhenPending() {
         Order order = new Order();

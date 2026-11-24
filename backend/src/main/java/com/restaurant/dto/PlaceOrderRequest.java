@@ -17,11 +17,22 @@ public class PlaceOrderRequest {
     // Optional client idempotency key to prevent accidental double clicks
     private String clientRequestId;
 
+    // Optional GPS coordinates for 2.5 km delivery radius validation
+    private Double latitude;
+    private Double longitude;
+
     public PlaceOrderRequest() {}
 
     public PlaceOrderRequest(String deliveryAddress, List<CartItemRequest> items) {
         this.deliveryAddress = deliveryAddress;
         this.items = items;
+    }
+
+    public PlaceOrderRequest(String deliveryAddress, List<CartItemRequest> items, Double latitude, Double longitude) {
+        this.deliveryAddress = deliveryAddress;
+        this.items = items;
+        this.latitude = latitude;
+        this.longitude = longitude;
     }
 
     public String getDeliveryAddress() { return deliveryAddress; }
@@ -32,4 +43,10 @@ public class PlaceOrderRequest {
 
     public String getClientRequestId() { return clientRequestId; }
     public void setClientRequestId(String clientRequestId) { this.clientRequestId = clientRequestId; }
+
+    public Double getLatitude() { return latitude; }
+    public void setLatitude(Double latitude) { this.latitude = latitude; }
+
+    public Double getLongitude() { return longitude; }
+    public void setLongitude(Double longitude) { this.longitude = longitude; }
 }

@@ -146,6 +146,10 @@ export const CartDrawer = ({ isOpen, onClose }) => {
                   <span>Delivery Charges</span>
                   <span className="font-semibold text-emerald-600">FREE</span>
                 </div>
+                <div className="flex items-center space-x-1.5 text-[11px] text-gray-500 bg-gray-50 p-2 rounded-lg border border-gray-100">
+                  <span>📍</span>
+                  <span>Free doorstep delivery within <strong>2.5 km</strong> radius</span>
+                </div>
                 <div className="flex justify-between text-base font-extrabold text-gray-900 pt-2 border-t border-gray-200">
                   <span>Total Amount</span>
                   <span className="text-brand-600">₹{subtotal.toFixed(2)}</span>

@@ -17,6 +17,7 @@ import com.restaurant.repository.FoodItemRepository;
 import com.restaurant.repository.OrderRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -39,6 +40,15 @@ public class OrderService {
     private final RestaurantStatusService restaurantStatusService;
     private final NotificationService notificationService;
 
+    @Value("${app.delivery.restaurant-latitude:12.9716}")
+    private double restaurantLatitude = 12.9716;
+
+    @Value("${app.delivery.restaurant-longitude:77.6412}")
+    private double restaurantLongitude = 77.6412;
+
+    @Value("${app.delivery.max-radius-km:2.5}")
+    private double maxDeliveryRadiusKm = 2.5;
+
     public OrderService(OrderRepository orderRepository,
                         FoodItemRepository foodItemRepository,
                         RestaurantStatusService restaurantStatusService,
@@ -47,6 +57,12 @@ public class OrderService {
         this.foodItemRepository = foodItemRepository;
         this.restaurantStatusService = restaurantStatusService;
         this.notificationService = notificationService;
+    }
+
+    public void setDeliveryGeoConfig(double restaurantLatitude, double restaurantLongitude, double maxDeliveryRadiusKm) {
+        this.restaurantLatitude = restaurantLatitude;
+        this.restaurantLongitude = restaurantLongitude;
+        this.maxDeliveryRadiusKm = maxDeliveryRadiusKm;
     }
 
     @Transactional
@@ -73,6 +89,19 @@ public class OrderService {
         order.setOrderStatus(OrderStatus.PENDING);
         order.setLocationShared(false);
         order.setOrderNumber(generateOrderNumber());
+
+        // 2. Geofencing validation: Customer can only place order within maxDeliveryRadiusKm (2.5 km)
+        if (request.getLatitude() != null && request.getLongitude() != null) {
+            double distance = calculateDistanceKm(restaurantLatitude, restaurantLongitude, request.getLatitude(), request.getLongitude());
+            if (distance > maxDeliveryRadiusKm) {
+                throw new BadRequestException(String.format(
+                        "Delivery is only available within %.1f km of our restaurant. Your current location is %.2f km away.",
+                        maxDeliveryRadiusKm, distance));
+            }
+            order.setLatitude(request.getLatitude());
+            order.setLongitude(request.getLongitude());
+            order.setLocationShared(true);
+        }
 
         for (CartItemRequest cartItem : request.getItems()) {
             if (cartItem.getQuantity() == null || cartItem.getQuantity() <= 0) {
@@ -212,6 +241,17 @@ public class OrderService {
                 : orderRepository.findAllOrdersPaged(pageable);
 
         return orders.map(OrderDto::new);
+    }
+
+    public static double calculateDistanceKm(double lat1, double lon1, double lat2, double lon2) {
+        final double R = 6371.0; // Earth's mean radius in kilometers
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLon = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
     }
 
     private String generateOrderNumber() {

@@ -48,6 +48,10 @@ app:
   admin:
     default-email: ${ADMIN_EMAIL:admin@restaurant.com}
     default-password: ${ADMIN_PASSWORD:AdminPassword@123}
+  delivery:
+    restaurant-latitude: ${RESTAURANT_LAT:12.9716}
+    restaurant-longitude: ${RESTAURANT_LNG:77.6412}
+    max-radius-km: ${MAX_DELIVERY_RADIUS_KM:2.5}
     default-name: ${ADMIN_NAME:Head Administrator}
     default-mobile: ${ADMIN_MOBILE:+919876543210}
   retention:

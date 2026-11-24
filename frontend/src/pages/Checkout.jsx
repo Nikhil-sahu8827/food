@@ -4,7 +4,7 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { useRestaurantStatus } from '../context/RestaurantStatusContext';
 import { orderApi } from '../api/orderApi';
-import { FiCheckCircle, FiShield, FiAlertTriangle, FiArrowLeft, FiShoppingBag } from 'react-icons/fi';
+import { FiCheckCircle, FiShield, FiAlertTriangle, FiArrowLeft, FiShoppingBag, FiMapPin, FiCrosshair } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 
 export const Checkout = () => {
@@ -17,9 +17,80 @@ export const Checkout = () => {
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
+  // 2.5 km Geofencing delivery configuration & state
+  const restaurantLat = Number(status?.restaurantLatitude || 12.9716);
+  const restaurantLng = Number(status?.restaurantLongitude || 77.6412);
+  const maxRadiusKm = Number(status?.maxDeliveryRadiusKm || 2.5);
+
+  const [coords, setCoords] = useState(null); // { lat, lng }
+  const [distanceKm, setDistanceKm] = useState(null);
+  const [isLocating, setIsLocating] = useState(false);
+  const [geoError, setGeoError] = useState('');
+
+  const calculateDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371; // Earth's mean radius in km
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return Number((R * c).toFixed(2));
+  };
+
+  const handleDetectGPS = () => {
+    setIsLocating(true);
+    setGeoError('');
+    if (!navigator.geolocation) {
+      setGeoError('Geolocation is not supported by your browser.');
+      setIsLocating(false);
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        setCoords({ lat, lng });
+        const dist = calculateDistance(restaurantLat, restaurantLng, lat, lng);
+        setDistanceKm(dist);
+        setIsLocating(false);
+        if (dist <= maxRadiusKm) {
+          toast.success(`Location verified! ${dist} km from kitchen (Within ${maxRadiusKm} km range).`);
+        } else {
+          toast.error(`Out of delivery range (${dist} km away). Max allowed radius is ${maxRadiusKm} km.`);
+        }
+      },
+      (err) => {
+        console.warn(err);
+        setIsLocating(false);
+        setGeoError('GPS permission denied or timed out. Please choose a sample demo location below to test.');
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  };
+
+  const handleSetSampleLocation = (lat, lng, addressSample) => {
+    setCoords({ lat, lng });
+    const dist = calculateDistance(restaurantLat, restaurantLng, lat, lng);
+    setDistanceKm(dist);
+    setGeoError('');
+    if (addressSample && !deliveryAddress.trim()) {
+      setDeliveryAddress(addressSample);
+    }
+    if (dist <= maxRadiusKm) {
+      toast.success(`Location set: ${dist} km away (Deliverable)`);
+    } else {
+      toast.error(`Location set: ${dist} km away (Exceeds ${maxRadiusKm} km radius)`);
+    }
+  };
+
   const minOrder = Number(status?.minimumOrderAmount || 0);
   const isBelowMin = subtotal < minOrder;
   const isClosed = !status?.open;
+  const isOutOfRange = distanceKm !== null && distanceKm > maxRadiusKm;
 
   useEffect(() => {
     if (items.length === 0) {
@@ -72,10 +143,18 @@ export const Checkout = () => {
       return;
     }
 
+    if (isOutOfRange) {
+      setErrorMsg(`Delivery is only available within ${maxRadiusKm} km of our kitchen. Your selected location is ${distanceKm} km away.`);
+      toast.error(`Out of delivery range (${distanceKm} km). Max ${maxRadiusKm} km allowed.`);
+      return;
+    }
+
     setSubmitting(true);
     try {
       const orderPayload = {
         deliveryAddress: deliveryAddress.trim(),
+        latitude: coords ? coords.lat : null,
+        longitude: coords ? coords.lng : null,
         items: items.map((i) => ({
           foodItemId: i.foodItem.id,
           quantity: i.quantity,
@@ -160,6 +239,88 @@ export const Checkout = () => {
               </span>
             </div>
 
+            {/* 2.5 km Geofencing Delivery Location Verification */}
+            <div className="p-4 rounded-2xl border border-gray-200 bg-gray-50/80 space-y-3">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center space-x-2">
+                  <FiMapPin className="text-brand-600 text-lg shrink-0" />
+                  <div>
+                    <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider">
+                      Delivery Zone Verification (Max {maxRadiusKm} km)
+                    </h4>
+                    <p className="text-[11px] text-gray-500">
+                      We deliver within {maxRadiusKm} km to ensure hot, fresh food.
+                    </p>
+                  </div>
+                </div>
+                {distanceKm !== null && (
+                  <span
+                    className={`px-3 py-1 rounded-full text-xs font-black shadow-sm ${
+                      distanceKm <= maxRadiusKm
+                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                        : 'bg-rose-100 text-rose-800 border border-rose-300'
+                    }`}
+                  >
+                    {distanceKm <= maxRadiusKm
+                      ? `✓ ${distanceKm} km (In Delivery Zone)`
+                      : `✕ ${distanceKm} km (Out of Range)`}
+                  </span>
+                )}
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={handleDetectGPS}
+                  disabled={isLocating}
+                  className="inline-flex items-center space-x-1.5 px-3.5 py-2 bg-brand-600 hover:bg-brand-700 disabled:bg-brand-300 text-white text-xs font-bold rounded-xl transition shadow-sm active:scale-95"
+                >
+                  <FiCrosshair className={isLocating ? 'animate-spin' : ''} />
+                  <span>{isLocating ? 'Detecting Location...' : '📍 Auto-Detect My Location'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSetSampleLocation(12.9750, 77.6430, '100 Feet Rd, Indiranagar, Bengaluru, 560038')}
+                  className="px-2.5 py-1.5 bg-white hover:bg-emerald-50 hover:text-emerald-700 text-gray-700 text-[11px] font-semibold rounded-xl border border-gray-200 transition"
+                >
+                  🎯 Test: Near (~0.5 km)
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSetSampleLocation(12.9200, 77.6100, '5th Block Koramangala, Bengaluru, 560095')}
+                  className="px-2.5 py-1.5 bg-white hover:bg-rose-50 hover:text-rose-700 text-gray-700 text-[11px] font-semibold rounded-xl border border-gray-200 transition"
+                >
+                  🚫 Test: Far (~6.5 km)
+                </button>
+              </div>
+
+              {/* Feedback Alert Banners */}
+              {distanceKm !== null && distanceKm <= maxRadiusKm && (
+                <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center space-x-2 text-xs text-emerald-800 font-medium">
+                  <FiCheckCircle className="text-emerald-600 text-lg shrink-0" />
+                  <span>
+                    Great! Your location is <strong>{distanceKm} km</strong> from the kitchen (within <strong>{maxRadiusKm} km</strong> radius). Order can be placed.
+                  </span>
+                </div>
+              )}
+
+              {distanceKm !== null && distanceKm > maxRadiusKm && (
+                <div className="p-3 bg-rose-50 rounded-xl border border-rose-200 flex items-center space-x-2 text-xs text-rose-800 font-medium">
+                  <FiAlertTriangle className="text-rose-600 text-lg shrink-0" />
+                  <span>
+                    Sorry! Your location is <strong>{distanceKm} km</strong> away. We only deliver within <strong>{maxRadiusKm} km</strong> to maintain food temperature.
+                  </span>
+                </div>
+              )}
+
+              {geoError && (
+                <p className="text-[11px] text-amber-700 font-medium">⚠️ {geoError}</p>
+              )}
+            </div>
+
             {/* Payment Mode Selector (COD Only) */}
             <div className="space-y-2 pt-2">
               <span className="block text-xs font-bold text-gray-700 uppercase tracking-wider">
@@ -186,7 +347,7 @@ export const Checkout = () => {
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={submitting || isClosed || isBelowMin}
+              disabled={submitting || isClosed || isBelowMin || isOutOfRange}
               className="w-full bg-brand-600 hover:bg-brand-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-extrabold py-4 px-6 rounded-2xl shadow-lg transition flex items-center justify-center space-x-2 text-base active:scale-[0.99]"
             >
               {submitting ? (
@@ -194,6 +355,11 @@ export const Checkout = () => {
                   <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
                   <span>Placing Order in Database...</span>
                 </span>
+              ) : isOutOfRange ? (
+                <>
+                  <FiAlertTriangle className="text-xl text-rose-300" />
+                  <span>Out of Delivery Range ({distanceKm} km - Max {maxRadiusKm} km)</span>
+                </>
               ) : (
                 <>
                   <FiCheckCircle className="text-xl" />

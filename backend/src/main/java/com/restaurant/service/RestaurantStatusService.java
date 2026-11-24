@@ -10,6 +10,7 @@ import com.restaurant.repository.RestaurantScheduleRepository;
 import com.restaurant.repository.RestaurantSettingRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +26,15 @@ public class RestaurantStatusService {
     private final RestaurantSettingRepository settingRepository;
     private final RestaurantScheduleRepository scheduleRepository;
     private final RestaurantHolidayRepository holidayRepository;
+
+    @Value("${app.delivery.restaurant-latitude:12.9716}")
+    private double restaurantLatitude;
+
+    @Value("${app.delivery.restaurant-longitude:77.6412}")
+    private double restaurantLongitude;
+
+    @Value("${app.delivery.max-radius-km:2.5}")
+    private double maxDeliveryRadiusKm;
 
     public RestaurantStatusService(RestaurantSettingRepository settingRepository,
                                    RestaurantScheduleRepository scheduleRepository,
@@ -46,6 +56,9 @@ public class RestaurantStatusService {
         response.setWhatsappNumber(settings.getWhatsappNumber());
         response.setRestaurantName(settings.getRestaurantName());
         response.setRestaurantAddress(settings.getRestaurantAddress());
+        response.setRestaurantLatitude(restaurantLatitude);
+        response.setRestaurantLongitude(restaurantLongitude);
+        response.setMaxDeliveryRadiusKm(maxDeliveryRadiusKm);
         response.setManualOverride(settings.getManualOverride());
 
         // 1. Check Manual Override
