@@ -43,7 +43,8 @@ export const useWebSocket = ({ topic, onMessage, pollingFallbackFn, pollingInter
 
     const connectWebSocket = () => {
       try {
-        const socket = new SockJS('/ws');
+        const wsUrl = import.meta.env.VITE_WS_URL || '/ws';
+        const socket = new SockJS(wsUrl);
         stompClient = Stomp.over(socket);
         stompClient.debug = () => {}; // Silence verbose debug logs
 

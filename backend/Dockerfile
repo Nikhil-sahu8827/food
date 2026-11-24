@@ -10,12 +10,9 @@ WORKDIR /app
 COPY pom.xml settings.xml ./
 COPY .mvn ./.mvn
 
-# Download dependencies
-RUN mvn dependency:go-offline -B -DskipTests
-
 # Copy source code and build application JAR
 COPY src ./src
-RUN mvn clean package -DskipTests
+RUN mvn clean package -DskipTests -B
 
 # Stage 2: Minimal Production JRE Runtime
 FROM eclipse-temurin:21-jre-alpine
