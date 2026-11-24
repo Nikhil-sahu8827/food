@@ -1,0 +1,53 @@
+package com.restaurant.dto;
+
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import java.math.BigDecimal;
+
+public class FoodItemRequest {
+
+    @NotBlank(message = "Item name is required")
+    @Size(max = 150, message = "Item name cannot exceed 150 characters")
+    private String name;
+
+    @Size(max = 1000, message = "Description cannot exceed 1000 characters")
+    private String description;
+
+    @NotNull(message = "Price is required")
+    @DecimalMin(value = "0.0", inclusive = false, message = "Price must be greater than zero")
+    private BigDecimal price;
+
+    @Size(max = 500, message = "Image URL cannot exceed 500 characters")
+    private String imageUrl;
+
+    @NotNull(message = "Category ID is required")
+    private Long categoryId;
+
+    private Boolean veg = true;
+    private Boolean available = true;
+
+    public FoodItemRequest() {}
+
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+
+    public BigDecimal getPrice() { return price; }
+    public void setPrice(BigDecimal price) { this.price = price; }
+
+    public String getImageUrl() { return imageUrl; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
+
+    public Long getCategoryId() { return categoryId; }
+    public void setCategoryId(Long categoryId) { this.categoryId = categoryId; }
+
+    public Boolean getVeg() { return veg; }
+    public void setVeg(Boolean veg) { this.veg = veg; }
+
+    public Boolean getAvailable() { return available; }
+    public void setAvailable(Boolean available) { this.available = available; }
+}

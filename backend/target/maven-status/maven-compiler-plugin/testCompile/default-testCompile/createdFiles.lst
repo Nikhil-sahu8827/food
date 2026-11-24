@@ -1,0 +1,4 @@
+com\restaurant\AuthServiceTest.class
+com\restaurant\OrderServiceTest.class
+com\restaurant\RestaurantStatusServiceTest.class
+com\restaurant\RetentionSchedulerServiceTest.class

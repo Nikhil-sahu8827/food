@@ -1,0 +1,33 @@
+server:
+  port: 0
+
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+  flyway:
+    enabled: false
+
+app:
+  jwt:
+    secret: dGhpc0lzQVZlcnlTZWN1cmVTZWNyZXRLZXlGb3JGb29kT3JkZXJpbmdXZWJzaXRlMjAyNg==
+    expiration-ms: 3600000
+  cors:
+    allowed-origins: "*"
+  admin:
+    default-email: admin@restaurant.com
+    default-password: AdminPassword@123
+    default-name: Test Administrator
+    default-mobile: "+919876543210"
+  retention:
+    days: 30
+    cron: "0 0 3 * * *"
+  storage:
+    upload-dir: target/test-uploads
